@@ -239,7 +239,7 @@ export default function Home() {
 
     // Setup WebSocket for real-time trace
     const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000';
-    const ws = new WebSocket(`${WS_URL}/ws/scan`);
+    const ws = new WebSocket(`${WS_URL}/ws/scan/${sessionId}`);
     wsRef.current = ws;
 
     ws.onmessage = (event) => {

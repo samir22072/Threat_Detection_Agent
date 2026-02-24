@@ -42,22 +42,29 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # WebSocket Connection Manager
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
+        # Maps session_id -> list of WebSockets
+        self.active_connections: Dict[str, List[WebSocket]] = {}
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket, session_id: str):
         await websocket.accept()
-        self.active_connections.append(websocket)
+        if session_id not in self.active_connections:
+            self.active_connections[session_id] = []
+        self.active_connections[session_id].append(websocket)
 
-    def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
+    def disconnect(self, websocket: WebSocket, session_id: str):
+        if session_id in self.active_connections:
+            if websocket in self.active_connections[session_id]:
+                self.active_connections[session_id].remove(websocket)
+            if not self.active_connections[session_id]:
+                del self.active_connections[session_id]
 
-    async def broadcast(self, message: dict):
-        for connection in self.active_connections:
-            try:
-                await connection.send_json(message)
-            except:
-                pass
+    async def broadcast_to_session(self, session_id: str, message: dict):
+        if session_id in self.active_connections:
+            for connection in self.active_connections[session_id]:
+                try:
+                    await connection.send_json(message)
+                except Exception as e:
+                    print(f"WS Send Error for session {session_id}: {e}")
 
 manager = ConnectionManager()
 
@@ -68,14 +75,14 @@ class ScanRequest(BaseModel):
     timeDuration: str = "last 60 days"
     sessionId: str = "default"
 
-@app.websocket("/ws/scan")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
+@app.websocket("/ws/scan/{session_id}")
+async def websocket_endpoint(websocket: WebSocket, session_id: str):
+    await manager.connect(websocket, session_id)
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-        manager.disconnect(websocket)
+        manager.disconnect(websocket, session_id)
 
 @app.get("/api/sessions")
 async def get_sessions():
@@ -209,8 +216,8 @@ async def start_scan(request: ScanRequest):
             except Exception as e:
                 print(f"Error saving thought trace to DB: {e}")
                 
-            # Send to all connected WebSocket clients
-            asyncio.run_coroutine_threadsafe(manager.broadcast(msg), loop)
+            # Send to all connected WebSocket clients for this session
+            asyncio.run_coroutine_threadsafe(manager.broadcast_to_session(request.sessionId, msg), loop)
 
         # Run CrewAI in a separate thread to avoid blocking the FastAPI event loop
         result = await asyncio.to_thread(

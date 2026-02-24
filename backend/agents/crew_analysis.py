@@ -85,28 +85,31 @@ def run_crew(asset: str, asset_config: Dict[str, Any], scan_date: str, time_dura
         )
 
     # Initialize Agents
-    searcher = create_agent("searcher", "Search & Recon Agent")
+    researcher = create_agent("researcher", "Threat Researcher Agent")
     analyst = create_agent("analyst", "Threat Analyst Agent")
     summarizer = create_agent("summarizer", "Report Synthesis Agent")
 
     # Define Tasks
     discovery_task = Task(
         description='''Find and research relevant security incidents for {asset} in the {timeDuration}. 
-        1. First, search for incidents using the SerperDevTool.
-        2. Then, use the ScrapeWebsiteTool to "go deep" into the most critical links (especially vendor advisories and technical blogs).
-        3. You MUST extract:
+        CRITICAL INSTRUCTIONS:
+        1. Query Expansion: You MUST run multiple, distinct searches to thoroughly cover the {timeDuration}. Do not rely on a single search query returning everything. Use variations (e.g., "[asset] CVE [year]", "[asset] vulnerability advisory", "[asset] exploit").
+        2. Depth over Breadth: Use the ScrapeWebsiteTool to read the actual body of vendor advisories, NVD pages, and technical blogs.
+        3. URL Validation: If you find a link, you MUST verify it is a valid, functioning HTTP/HTTPS URL that actually contains the threat intelligence. Do not hallucinate dummy URLs.
+        4. Detail Extraction: You MUST extract:
+           - The exact Date of discovery or publication (YYYY-MM-DD format)
            - CVE IDs
            - Affected specific firmware or software versions (e.g., SonicOS 7.0)
            - The specific exploit condition or technical root cause
            - Direct remediation steps (e.g., specific CLI commands or patch links)
-        4. You MUST explicitly list the source URLs or links where you found the information for EVERY incident.''',
-        expected_output='A deep technical report including scraped data, affected versions, and direct source URLs.',
-        agent=searcher
+        5. You MUST explicitly list the validated source URLs for EVERY incident.''',
+        expected_output='A deep technical report resulting from multiple exhaustive searches, including validated source URLs, scraped data, and affected versions.',
+        agent=researcher
     )
 
     analysis_task = Task(
-        description='Analyze each incident found by the Searcher against the following configuration: {assetConfig}. Determine "doesAffectOrg" (True/False) based on firmware and exposed services. YOU MUST INCLUDE ALL SOURCE URLs in your analysis output for each incident.',
-        expected_output='An impact analysis report for each incident, including technical justification, business risk, and the corresponding source URLs.',
+        description='Analyze each incident found by the Researcher against the following configuration: {assetConfig}. Determine "doesAffectOrg" (True/False) based on firmware and exposed services. YOU MUST INCLUDE ALL VALIDATED SOURCE URLs and the exact INCIDENT DATE (publication date) in your analysis output for each incident.',
+        expected_output='An impact analysis report for each incident, including technical justification, business risk, the exact incident date, and the corresponding validated source URLs.',
         agent=analyst,
         context=[discovery_task]
     )
@@ -120,7 +123,7 @@ def run_crew(asset: str, asset_config: Dict[str, Any], scan_date: str, time_dura
             "executiveSummary": { "overallRiskLevel": "...", "keyFindings": [...], "businessImpact": "...", "immediateActions": [...] },
             "references": { ... }
         }
-        Provide only the JSON. Do not return empty arrays for sourceLinks if there are URLs provided in the analysis.''',
+        Provide only the JSON. Do not return empty arrays for sourceLinks if there are URLs provided in the analysis. The "incidentDate" MUST be the exact historical publication date provided by the Researcher/Analyst, NEVER the current date unless it was discovered today.''',
         expected_output='A valid JSON object following the specified schema with populated sourceLinks arrays for every incident.',
         agent=summarizer,
         context=[analysis_task]
@@ -128,7 +131,7 @@ def run_crew(asset: str, asset_config: Dict[str, Any], scan_date: str, time_dura
 
     # Initialize the Crew
     threat_crew = Crew(
-        agents=[searcher, analyst, summarizer],
+        agents=[researcher, analyst, summarizer],
         tasks=[discovery_task, analysis_task, report_task],
         process=Process.sequential,
         verbose=True

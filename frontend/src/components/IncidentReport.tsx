@@ -105,11 +105,19 @@ export function IncidentReport({ report }: IncidentReportProps) {
                 <div className="grid grid-cols-1 gap-6">
                     {incidents.map((inc, i) => (
                         <Card key={i} className="bg-zinc-950/30 border-zinc-800/50 hover:border-cyan-500/20 transition-all duration-300 group">
-                            <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-zinc-900/50 bg-white/[0.01]">
-                                <CardTitle className="text-lg font-bold text-zinc-200 group-hover:text-cyan-400 transition-colors">
-                                    {inc.incident}
-                                </CardTitle>
-                                <Badge className={`${getSeverityBadge(inc.severity)} font-mono uppercase tracking-tighter`}>
+                            <CardHeader className="flex flex-row items-start justify-between pb-4 border-b border-zinc-900/50 bg-white/[0.01]">
+                                <div className="space-y-1.5">
+                                    <CardTitle className="text-lg font-bold text-zinc-200 group-hover:text-cyan-400 transition-colors">
+                                        {inc.incident}
+                                    </CardTitle>
+                                    {inc.incidentDate && (
+                                        <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
+                                            <Activity className="w-3 h-3 text-cyan-600" />
+                                            Incident Recorded: {inc.incidentDate}
+                                        </p>
+                                    )}
+                                </div>
+                                <Badge className={`${getSeverityBadge(inc.severity)} font-mono uppercase tracking-tighter mt-1`}>
                                     {inc.severity}
                                 </Badge>
                             </CardHeader>
