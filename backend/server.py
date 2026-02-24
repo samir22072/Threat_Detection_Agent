@@ -3,7 +3,7 @@ import json
 import asyncio
 from datetime import datetime
 from typing import Dict, Any, List
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -164,14 +164,9 @@ async def generate_agents_api(request: ScanRequest):
         print(f"Error generating agents: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/api/scan")
-async def start_scan(request: ScanRequest):
+async def run_scan_background(request: ScanRequest):
     try:
-        # Pre-create session just in case
-        ensure_session_exists(request.sessionId)
-        
         asset_config = request.attributes
-        
         loop = asyncio.get_running_loop()
 
         def step_callback(step, agent_name="Agent"):
@@ -244,11 +239,29 @@ async def start_scan(request: ScanRequest):
             
         # Save the report for session history in DB
         db_update_scan_report(request.sessionId, final_report)
+
+        # Notify frontend that the process is finished
+        finish_msg = {"type": "finish"}
+        # ensure to use asyncio.run_coroutine_threadsafe if called outside of main event loop context,
+        # but here we are in an async def started by BackgroundTasks, so we can await directly.
+        await manager.broadcast_to_session(request.sessionId, finish_msg)
             
-        return final_report
+    except Exception as e:
+        print(f"Error in background scan: {str(e)}")
+
+@app.post("/api/scan", status_code=202)
+async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks):
+    try:
+        # Pre-create session just in case
+        ensure_session_exists(request.sessionId)
+        
+        # Enqueue the background task
+        background_tasks.add_task(run_scan_background, request)
+        
+        return {"status": "accepted", "message": "Scan started in background."}
         
     except Exception as e:
-        print(f"Error in scan: {str(e)}")
+        print(f"Error queuing scan: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")

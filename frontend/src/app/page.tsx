@@ -242,18 +242,35 @@ export default function Home() {
     const ws = new WebSocket(`${WS_URL}/ws/scan/${sessionId}`);
     wsRef.current = ws;
 
-    ws.onmessage = (event) => {
+    ws.onmessage = async (event) => {
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'thought') {
           setThoughts(prev => [...prev, data]);
+        } else if (data.type === 'finish') {
+          // The background task has finished generating the report.
+          const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+          const reportResp = await fetch(`${API_URL}/api/scan-report?sessionId=${sessionId}`);
+          if (reportResp.ok) {
+            const finalReport = await reportResp.json();
+            setReport(finalReport);
+            setStatus('finished');
+          } else {
+            setStatus('idle');
+            alert("Scan completed but failed to fetch the final report.");
+          }
+          ws.close();
         }
       } catch (e) {
         console.error("WS Parse Error:", e);
       }
     };
 
-    ws.onerror = (e) => console.error("WS Connection Error:", e);
+    ws.onerror = (e) => {
+      console.error("WS Connection Error:", e);
+      setStatus('idle');
+      alert("WebSocket connection error. The scan might still be running.");
+    };
 
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -267,48 +284,50 @@ export default function Home() {
         })
       });
 
-      if (!resp.ok) throw new Error("Scan Engine Error");
+      if (!resp.ok) {
+        throw new Error("Scan Engine Error");
+      }
 
-      const result = await resp.json();
-      setReport(result);
-      setStatus('finished');
+      // We don't wait for the report here anymore. 
+      // The API returns 202 Accepted instantly, and the WS handles completion.
+
     } catch (err) {
       console.error(err);
       setStatus('idle');
-      alert("Scan failed. Ensure backend is running.");
-    } finally {
+      alert("Failed to initialize scan. Ensure backend is running.");
       ws.close();
     }
   };
 
   return (
-    <main className="min-h-screen bg-[#020617] text-white selection:bg-cyan-500/30 overflow-x-hidden">
+    <main className="min-h-screen bg-gray-50 text-gray-800 selection:bg-[#D2B589]/30 overflow-x-hidden">
       {/* Background Decorative Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-[10%] left-[5%] w-[40%] h-[40%] bg-cyan-500/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[10%] right-[5%] w-[40%] h-[40%] bg-fuchsia-500/5 rounded-full blur-[120px]" />
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03]" />
+
+
+
       </div>
 
       <div className="container mx-auto max-w-7xl pt-12 pb-24 px-6 relative z-10">
         {/* Header */}
-        <header className="flex flex-col md:flex-row items-center justify-between mb-16 gap-8 animate-in fade-in slide-in-from-top-4 duration-700">
-          <div className="space-y-2 text-center md:text-left">
-            <h1 className="text-4xl md:text-5xl font-black tracking-tighter italic flex items-center gap-4 justify-center md:justify-start">
-              <span className="bg-gradient-to-r from-cyan-400 via-blue-500 to-fuchsia-500 bg-clip-text text-transparent">
-                CYBER THREAT COMMAND
+        <header className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-8 border-b border-[#19314B]/10">
+          <div>
+            <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-[#19314B] flex items-center gap-4 uppercase">
+              THREAT
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#D2B589] to-[#b39566]">
+                INTEL
               </span>
-              <Shield className="w-8 h-8 md:w-10 md:h-10 text-cyan-400 drop-shadow-[0_0_10px_rgba(0,242,255,0.5)]" />
+              <Shield className="w-8 h-8 md:w-10 md:h-10 text-[#0E6246]" />
             </h1>
-            <p className="text-zinc-500 font-mono tracking-widest text-[10px] uppercase pl-1 flex items-center gap-4 mt-2">
-              Multi-Agent Autonomous Intelligence System // v3.0-PREMIUM
+            <p className="text-[#a0a0a0] font-sans tracking-wide text-xs uppercase pl-1 flex items-center gap-4 mt-2">
+              Autonomous Intelligence System
               {sessionId &&
-                <span className="flex items-center gap-2 text-cyan-500 font-bold border border-cyan-900/40 bg-cyan-950/20 px-2 py-1 rounded">
+                <span className="flex items-center gap-2 text-[#D2B589] font-bold border border-[#D2B589]/20 bg-[#19314B]/80 px-2 py-1 rounded">
                   <Activity className="w-3 h-3" />
                   <span className="tracking-wide">
                     {sessionHistory.find(s => s.id === sessionId)?.name?.toUpperCase() || `${asset.replace(/[^a-zA-Z0-9]/g, '')}_Analysis_${sessionId.split('-')[0]}`.toUpperCase()}
                   </span>
-                  <Button variant="ghost" size="sm" onClick={startNewSession} className="h-5 px-2 ml-2 text-[10px] bg-cyan-900/40 hover:bg-cyan-800 text-white rounded">
+                  <Button variant="ghost" size="sm" onClick={startNewSession} className="h-5 px-2 ml-2 text-[10px] bg-[#0E6246] hover:bg-[#0E6246]/80 text-white rounded">
                     <Plus className="w-3 h-3 mr-1" /> NEW
                   </Button>
                 </span>
@@ -321,7 +340,7 @@ export default function Home() {
               <select
                 value={sessionId}
                 onChange={(e) => switchSession(e.target.value)}
-                className="bg-black/40 border border-zinc-800 text-cyan-300 font-mono text-[10px] p-2 rounded outline-none w-48 shadow-lg shadow-black/20"
+                className="bg-white border border-[#19314B]/30 text-[#19314B] font-sans font-bold text-xs p-2 rounded outline-none w-48 shadow-sm"
               >
                 <option value={sessionId} disabled>-- Select Session History --</option>
                 {sessionHistory.map(s => (
@@ -330,51 +349,51 @@ export default function Home() {
               </select>
             )}
 
-            <div className="flex items-center gap-6 bg-zinc-950/40 p-1.5 px-5 rounded-full border border-zinc-800/50 backdrop-blur-md shadow-lg shadow-black/20">
+            <div className="flex items-center gap-6 bg-white p-2 px-6 rounded border border-gray-200 shadow-md">
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${status === 'running' ? 'bg-cyan-500 animate-pulse' : 'bg-cyan-500/20'}`} />
-                <span className="text-[10px] font-mono uppercase text-zinc-400">Core_Engine</span>
+                <div className={`w-2 h-2 rounded-full ${status === 'running' ? 'bg-[#D2B589] animate-pulse' : 'bg-gray-300'}`} />
+                <span className="text-[10px] font-sans font-bold uppercase text-gray-500">System Ready</span>
               </div>
-              <div className="w-[1px] h-4 bg-zinc-800" />
-              <div className="flex items-center gap-2 text-zinc-300 font-black text-sm">
-                <Activity className="w-4 h-4 text-cyan-400" />
-                <span className="tracking-tight">READY_FOR_COMM</span>
+              <div className="w-[1px] h-4 bg-gray-200" />
+              <div className="flex items-center gap-2 text-[#19314B] font-bold text-sm">
+                <Activity className="w-4 h-4 text-[#0E6246]" />
+                <span className="tracking-tight uppercase">Operational</span>
               </div>
             </div>
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mt-8">
           {/* Left Panel: Configuration & Trace */}
           <div className="lg:col-span-4 space-y-6">
-            <Card className="bg-zinc-950/60 border-cyan-500/20 backdrop-blur-xl shadow-2xl shadow-cyan-500/5 overflow-hidden">
-              <div className="h-1 w-full bg-gradient-to-r from-cyan-500 via-blue-600 to-fuchsia-600" />
-              <CardHeader className="border-b border-zinc-900/50 pb-4">
-                <CardTitle className="text-xs uppercase tracking-[0.2em] font-black text-cyan-400/80 flex items-center gap-2">
-                  <Power className="w-4 h-4 text-cyan-500" />
-                  Target_Parameters
+            <Card className="bg-white border border-gray-200 shadow-sm overflow-hidden rounded-none">
+              <div className="h-1 w-full bg-[#19314B]" />
+              <CardHeader className="border-b border-gray-100 pb-4 bg-gray-50/50">
+                <CardTitle className="text-xs uppercase tracking-widest font-bold text-[#19314B] flex items-center gap-2">
+                  <Power className="w-4 h-4 text-[#D2B589]" />
+                  Target Parameters
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-6 space-y-5">
                 <div className="space-y-1.5 mb-4">
-                  <label className="text-[10px] uppercase font-bold text-zinc-500 tracking-widest flex items-center gap-2 ml-1">
-                    <Box className="w-3 h-3 text-cyan-700" /> Primary Asset Focus
+                  <label className="text-[10px] uppercase font-bold text-gray-500 tracking-widest flex items-center gap-2 ml-1">
+                    <Box className="w-3 h-3 text-[#19314B]" /> Primary Asset Focus
                   </label>
                   <Input
                     value={asset}
                     onChange={(e) => setAsset(e.target.value)}
-                    className="bg-black/30 border-zinc-800 focus:border-cyan-500/50 text-cyan-100 font-mono text-sm placeholder:text-zinc-700 h-10 transition-all font-bold"
+                    className="bg-gray-50 border-gray-200 focus:border-[#19314B] text-[#19314B] font-sans font-bold text-sm h-12 transition-all rounded-none"
                   />
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] uppercase font-bold text-zinc-500 tracking-widest flex items-center justify-between ml-1">
-                    <span className="flex items-center gap-2"><Cpu className="w-3 h-3 text-cyan-700" /> Specific Details</span>
+                  <label className="text-[10px] uppercase font-bold text-gray-500 tracking-widest flex items-center justify-between ml-1">
+                    <span className="flex items-center gap-2"><Cpu className="w-3 h-3 text-[#19314B]" /> Specific Details</span>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setAttributes([...attributes, { key: '', value: '' }])}
-                      className="h-6 px-2 text-[10px] text-cyan-500 hover:text-cyan-400 hover:bg-cyan-950/30"
+                      className="h-6 px-2 text-[10px] text-[#D2B589] hover:text-[#19314B] hover:bg-gray-100 uppercase rounded-none"
                     >
                       <Plus className="w-3 h-3 mr-1" /> Add Detail
                     </Button>
@@ -391,7 +410,7 @@ export default function Home() {
                             newAttrs[idx].key = e.target.value;
                             setAttributes(newAttrs);
                           }}
-                          className="bg-black/30 w-1/3 border-zinc-800 focus:border-cyan-500/50 text-cyan-300/70 font-mono text-[11px] h-9"
+                          className="bg-gray-50 w-1/3 border-gray-200 focus:border-[#19314B] text-gray-600 font-sans text-xs h-10 rounded-none"
                         />
                         <Input
                           placeholder="e.g. v7.0.1"
@@ -401,11 +420,11 @@ export default function Home() {
                             newAttrs[idx].value = e.target.value;
                             setAttributes(newAttrs);
                           }}
-                          className="bg-black/30 flex-1 border-zinc-800 focus:border-cyan-500/50 text-cyan-100 font-mono text-[12px] h-9"
+                          className="bg-gray-50 flex-1 border-gray-200 focus:border-[#19314B] text-[#19314B] font-sans font-bold text-xs h-10 rounded-none"
                         />
                         <button
                           onClick={() => setAttributes(attributes.filter((_, i) => i !== idx))}
-                          className="text-zinc-600 hover:text-red-400 transition-colors p-1 opacity-0 group-hover:opacity-100"
+                          className="text-gray-600 hover:text-red-500 transition-colors p-1 opacity-100 md:opacity-0 md:group-hover:opacity-100"
                         >
                           <X className="w-4 h-4" />
                         </button>
@@ -414,13 +433,13 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-3 mt-6">
+                <div className="flex flex-col gap-3 mt-8">
                   <div className="flex gap-3">
                     <Button
                       onClick={generateAgents}
                       disabled={status === 'running' || isGeneratingAgents}
                       variant="outline"
-                      className="flex-1 h-11 border-fuchsia-500/30 text-fuchsia-400 hover:bg-fuchsia-500/10 hover:text-fuchsia-300 font-bold tracking-wider uppercase transition-all bg-transparent"
+                      className="flex-1 h-12 border-[#19314B] text-[#19314B] hover:bg-[#19314B] hover:text-white font-bold tracking-wider uppercase transition-all bg-transparent rounded-none"
                     >
                       {isGeneratingAgents ? 'Synthesizing...' : 'Generate Agents'}
                     </Button>
@@ -428,7 +447,7 @@ export default function Home() {
                       onClick={editAgents}
                       disabled={status === 'running' || isGeneratingAgents}
                       variant="outline"
-                      className="flex-1 h-11 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 hover:text-cyan-300 font-bold tracking-wider uppercase transition-all bg-transparent"
+                      className="flex-1 h-12 border-[#D2B589] text-[#D2B589] hover:bg-[#D2B589] hover:text-white font-bold tracking-wider uppercase transition-all bg-transparent rounded-none"
                     >
                       Edit Agents
                     </Button>
@@ -437,9 +456,9 @@ export default function Home() {
                   <Button
                     onClick={startScan}
                     disabled={status === 'running' || isGeneratingAgents}
-                    className="w-full h-11 bg-gradient-to-br from-cyan-600 via-blue-700 to-indigo-800 hover:brightness-110 text-white font-black tracking-widest uppercase italic shadow-[0_4px_20px_rgba(0,149,255,0.3)] hover:shadow-[0_8px_30px_rgba(0,149,255,0.5)] transition-all duration-500 disabled:opacity-50 border border-cyan-400/20"
+                    className="w-full h-14 bg-[#0E6246] hover:bg-[#0acc74] text-white font-black tracking-widest uppercase shadow-lg transition-all duration-300 disabled:opacity-50 rounded-none mt-2"
                   >
-                    {status === 'running' ? 'Neutralizing...' : 'Initialize Scan'}
+                    {status === 'running' ? 'Scanning...' : 'Initialize Analysis'}
                   </Button>
                 </div>
               </CardContent>
@@ -456,27 +475,27 @@ export default function Home() {
             </div>
 
             {isEditingConfig && agentsConfig && (
-              <Card className="flex-1 flex flex-col bg-zinc-950/60 border-cyan-500/20 backdrop-blur-xl shadow-2xl shadow-cyan-500/5 overflow-hidden animate-in fade-in zoom-in-95 duration-500">
-                <CardHeader className="border-b border-zinc-900/50 pb-6 shrink-0 bg-black/40">
-                  <CardTitle className="text-sm uppercase tracking-[0.2em] font-black text-cyan-400/80 flex items-center gap-3">
-                    <Activity className="w-5 h-5 text-cyan-500" />
+              <Card className="flex-1 flex flex-col bg-white border-gray-200 shadow-sm overflow-hidden animate-in fade-in zoom-in-95 duration-500 rounded-none">
+                <CardHeader className="border-b border-gray-100 pb-6 shrink-0 bg-gray-50/50">
+                  <CardTitle className="text-sm uppercase tracking-[0.2em] font-black text-[#19314B] flex items-center gap-3">
+                    <Activity className="w-5 h-5 text-[#0E6246]" />
                     Agent_Configuration_Editor
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6 flex flex-col flex-1 space-y-6 overflow-y-auto max-h-[700px] custom-scrollbar">
                   <div className="space-y-8">
                     {Object.entries(agentsConfig).map(([agentId, config]) => (
-                      <div key={agentId} className="bg-zinc-900/40 border border-zinc-800/80 rounded-xl p-5 space-y-5 relative overflow-hidden group">
+                      <div key={agentId} className="bg-white border border-gray-200 shadow-sm p-5 space-y-5 relative overflow-hidden group">
                         {/* Subtle background glow per agent */}
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-[50px] group-hover:bg-fuchsia-500/5 transition-colors duration-1000" />
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-full blur-[50px] transition-colors duration-1000" />
 
-                        <h3 className="text-lg font-black tracking-widest text-fuchsia-400 uppercase border-b border-zinc-800 pb-2 mb-4">
+                        <h3 className="text-lg font-black tracking-widest text-[#19314B] uppercase border-b border-gray-100 pb-2 mb-4">
                           Agent:: {agentId}
                         </h3>
 
                         <div className="space-y-2">
-                          <label className="text-[11px] uppercase tracking-widest text-zinc-400 font-bold flex items-center gap-2">
-                            <User className="w-3.5 h-3.5 text-cyan-500" />
+                          <label className="text-[11px] uppercase tracking-widest text-gray-500 font-bold flex items-center gap-2">
+                            <User className="w-3.5 h-3.5 text-[#19314B]" />
                             Role Definition
                           </label>
                           <textarea
@@ -485,13 +504,13 @@ export default function Home() {
                               ...agentsConfig,
                               [agentId]: { ...config, role: e.target.value }
                             })}
-                            className="w-full min-h-[60px] bg-black/50 border border-zinc-800 focus:border-cyan-500/50 text-cyan-50 font-mono text-[13px] p-3 rounded-md outline-none transition-all resize-y"
+                            className="w-full min-h-[60px] bg-gray-50 border border-gray-200 focus:border-[#19314B]/50 text-gray-800 font-mono text-[13px] p-3 rounded-none outline-none transition-all resize-y"
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <label className="text-[11px] uppercase tracking-widest text-zinc-400 font-bold flex items-center gap-2">
-                            <Target className="w-3.5 h-3.5 text-blue-500" />
+                          <label className="text-[11px] uppercase tracking-widest text-gray-500 font-bold flex items-center gap-2">
+                            <Target className="w-3.5 h-3.5 text-[#0E6246]" />
                             Objective / Goal
                           </label>
                           <textarea
@@ -500,13 +519,13 @@ export default function Home() {
                               ...agentsConfig,
                               [agentId]: { ...config, goal: e.target.value }
                             })}
-                            className="w-full min-h-[100px] bg-black/50 border border-zinc-800 focus:border-cyan-500/50 text-cyan-50 font-mono text-[13px] p-3 rounded-md outline-none transition-all resize-y"
+                            className="w-full min-h-[100px] bg-gray-50 border border-gray-200 focus:border-[#19314B]/50 text-gray-800 font-mono text-[13px] p-3 rounded-none outline-none transition-all resize-y"
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <label className="text-[11px] uppercase tracking-widest text-zinc-400 font-bold flex items-center gap-2">
-                            <BookOpen className="w-3.5 h-3.5 text-fuchsia-500" />
+                          <label className="text-[11px] uppercase tracking-widest text-gray-500 font-bold flex items-center gap-2">
+                            <BookOpen className="w-3.5 h-3.5 text-[#D2B589]" />
                             System Backstory
                           </label>
                           <textarea
@@ -515,18 +534,18 @@ export default function Home() {
                               ...agentsConfig,
                               [agentId]: { ...config, backstory: e.target.value }
                             })}
-                            className="w-full min-h-[140px] bg-black/50 border border-zinc-800 focus:border-cyan-500/50 text-cyan-50 font-mono text-[13px] p-3 rounded-md outline-none transition-all resize-y"
+                            className="w-full min-h-[140px] bg-gray-50 border border-gray-200 focus:border-[#19314B]/50 text-gray-800 font-mono text-[13px] p-3 rounded-none outline-none transition-all resize-y"
                           />
                         </div>
                       </div>
                     ))}
                   </div>
 
-                  <div className="flex gap-4 shrink-0 pt-4 border-t border-zinc-900/50 sticky bottom-0 bg-zinc-950/90 backdrop-blur-md pb-2 z-10">
-                    <Button onClick={() => setIsEditingConfig(false)} variant="outline" className="flex-1 h-14 bg-zinc-900 border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white uppercase tracking-widest font-bold">
+                  <div className="flex gap-4 shrink-0 pt-4 border-t border-gray-100 sticky bottom-0 bg-white/95 backdrop-blur-md pb-2 z-10">
+                    <Button onClick={() => setIsEditingConfig(false)} variant="outline" className="flex-1 h-14 bg-white border-gray-300 text-gray-600 hover:bg-gray-50 hover:text-[#19314B] uppercase tracking-widest font-bold rounded-none">
                       Discard Changes
                     </Button>
-                    <Button onClick={saveConfig} className="flex-1 h-14 bg-cyan-600 hover:bg-cyan-500 text-white font-black tracking-widest uppercase border border-cyan-400 shadow-[0_0_15px_rgba(0,149,255,0.3)]">
+                    <Button onClick={saveConfig} className="flex-1 h-14 bg-[#19314B] hover:bg-[#19314B]/90 text-white font-black tracking-widest uppercase rounded-none shadow-sm">
                       Save & Finalize Configuration
                     </Button>
                   </div>
@@ -535,27 +554,27 @@ export default function Home() {
             )}
 
             {status === 'idle' && !isEditingConfig && (
-              <div className="flex-1 flex flex-col items-center justify-center border border-zinc-800/50 rounded-2xl bg-zinc-950/20 backdrop-blur-sm animate-in fade-in zoom-in-95 duration-1000">
+              <div className="flex-1 flex flex-col items-center justify-center border border-gray-200 bg-white shadow-sm rounded-none animate-in fade-in zoom-in-95 duration-1000">
                 <div className="relative mb-8">
-                  <Shield className="w-20 h-20 text-zinc-900 drop-shadow-[0_0_15px_rgba(0,0,0,1)]" />
-                  <Shield className="w-20 h-20 text-cyan-900 absolute inset-0 animate-pulse opacity-20" />
+                  <Shield className="w-20 h-20 text-gray-100 drop-shadow-sm" />
+                  <Shield className="w-20 h-20 text-[#19314B] absolute inset-0 animate-pulse opacity-20" />
                 </div>
-                <p className="text-zinc-600 font-mono text-[10px] uppercase tracking-[0.4em]">Awaiting Uplink Initialization...</p>
+                <p className="text-gray-400 font-sans font-bold text-[10px] uppercase tracking-[0.4em]">Awaiting Uplink Initialization...</p>
               </div>
             )}
 
             {status === 'running' && (
-              <div className="flex-1 flex flex-col items-center justify-center space-y-10 py-20 bg-zinc-950/10 rounded-2xl border border-cyan-500/5">
+              <div className="flex-1 flex flex-col items-center justify-center space-y-10 py-20 bg-gray-50 rounded-none border border-gray-200">
                 <div className="relative">
-                  <div className="w-32 h-32 rounded-full border-t-2 border-r-2 border-cyan-500/80 animate-spin" />
-                  <div className="absolute inset-0 w-32 h-32 rounded-full border-b-2 border-l-2 border-fuchsia-500/40 animate-[spin_3s_linear_infinite]" />
+                  <div className="w-32 h-32 rounded-full border-t-2 border-r-2 border-[#19314B]/20 animate-spin" />
+                  <div className="absolute inset-0 w-32 h-32 rounded-full border-b-2 border-l-2 border-[#D2B589]/40 animate-[spin_3s_linear_infinite]" />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <Radio className="w-10 h-10 text-cyan-400 animate-pulse shadow-cyan-500/50" />
+                    <Radio className="w-10 h-10 text-[#0E6246] animate-pulse" />
                   </div>
                 </div>
                 <div className="text-center space-y-3">
-                  <h2 className="text-3xl font-black italic tracking-tighter text-white uppercase bg-gradient-to-b from-white to-zinc-500 bg-clip-text text-transparent">Reconnaissance in Progress</h2>
-                  <p className="text-zinc-500 font-mono text-[10px] uppercase tracking-[0.25em] max-w-md mx-auto leading-loose">
+                  <h2 className="text-3xl font-black italic tracking-tighter text-[#19314B] uppercase">Reconnaissance in Progress</h2>
+                  <p className="text-gray-500 font-sans font-bold text-[10px] uppercase tracking-[0.25em] max-w-md mx-auto leading-loose">
                     Agents are traversing CVE databases and vendor advisories. Real-time thought trace is active.
                   </p>
                 </div>

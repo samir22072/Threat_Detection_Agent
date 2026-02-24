@@ -33,16 +33,16 @@
 
 @layer base {
   * {
-    @apply border-zinc-800;
+    @apply border-gray-200;
   }
 
   body {
-    @apply bg-[#020617] text-slate-100 antialiased;
+    @apply bg-gray-50 text-gray-800 antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
 
-/* Custom Scrollbar for Cyberpunk Look */
+/* Custom Scrollbar for Minimal Look */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
@@ -53,35 +53,9 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-cyan-500/10 rounded-full transition-colors;
+  @apply bg-gray-300 rounded-none transition-colors;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-cyan-500/40;
-}
-
-/* Neon Glow Utilities */
-.neon-glow-blue {
-  box-shadow: 0 0 15px rgba(0, 242, 255, 0.3);
-}
-
-.neon-glow-purple {
-  box-shadow: 0 0 15px rgba(112, 0, 255, 0.3);
-}
-
-/* Animations */
-@keyframes pulse-slow {
-
-  0%,
-  100% {
-    opacity: 0.3;
-  }
-
-  50% {
-    opacity: 0.6;
-  }
-}
-
-.animate-pulse-slow {
-  animation: pulse-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  @apply bg-gray-400;
 }

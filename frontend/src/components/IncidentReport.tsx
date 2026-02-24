@@ -14,38 +14,38 @@ export function IncidentReport({ report }: IncidentReportProps) {
 
     const getRiskColor = (level: string) => {
         switch (level?.toLowerCase()) {
-            case 'critical': return 'text-fuchsia-500 brightness-125';
-            case 'high': return 'text-red-500';
-            case 'medium': return 'text-yellow-500';
-            default: return 'text-cyan-400';
+            case 'critical': return 'text-red-600';
+            case 'high': return 'text-orange-500';
+            case 'medium': return 'text-[#D2B589]';
+            default: return 'text-[#0E6246]';
         }
     };
 
     const getSeverityBadge = (severity: string) => {
         const s = severity?.toLowerCase();
-        if (s === 'critical') return 'bg-fuchsia-500/10 text-fuchsia-500 border-fuchsia-500/30';
-        if (s === 'high') return 'bg-red-500/10 text-red-400 border-red-500/30';
-        if (s === 'medium') return 'bg-yellow-500/10 text-yellow-400 border-yellow-500/30';
-        return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30';
+        if (s === 'critical') return 'bg-red-50 text-red-600 border-red-200';
+        if (s === 'high') return 'bg-orange-50 text-orange-600 border-orange-200';
+        if (s === 'medium') return 'bg-[#D2B589]/10 text-[#D2B589] border-[#D2B589]/30';
+        return 'bg-[#0E6246]/10 text-[#0E6246] border-[#0E6246]/30';
     };
 
     return (
         <div className="space-y-10 animate-in fade-in zoom-in-95 duration-1000">
             {/* Executive Summary Header */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {[
                     { label: "Overall Risk", value: executiveSummary.overallRiskLevel, icon: Activity, color: getRiskColor(executiveSummary.overallRiskLevel) },
-                    { label: "Total Threats", value: summary.totalIncidents, icon: AlertTriangle, color: "text-zinc-100" },
-                    { label: "Critical", value: summary.criticalCount, icon: ShieldCheck, color: "text-fuchsia-500" },
-                    { label: "Research Coverage", value: "DEEP", icon: Search, color: "text-cyan-400" },
+                    { label: "Total Threats", value: summary.totalIncidents, icon: AlertTriangle, color: "text-[#19314B]" },
+                    { label: "Critical", value: summary.criticalCount, icon: ShieldCheck, color: "text-red-600" },
+                    { label: "Research Coverage", value: "DEEP", icon: Search, color: "text-[#0E6246]" },
                 ].map((item, i) => (
-                    <Card key={i} className="bg-zinc-950/40 border-cyan-500/10 backdrop-blur-sm overflow-hidden relative">
+                    <Card key={i} className="bg-white border-gray-200 shadow-sm relative rounded-none">
                         <div className="absolute top-0 right-0 p-2 opacity-5">
                             <item.icon className="w-12 h-12" />
                         </div>
                         <CardContent className="pt-6">
-                            <p className="text-[10px] text-zinc-500 uppercase font-black tracking-[0.2em] mb-1">{item.label}</p>
-                            <div className={`text-2xl font-bold tracking-tight ${item.color}`}>
+                            <p className="text-[10px] text-gray-500 uppercase font-sans font-bold tracking-widest mb-1">{item.label}</p>
+                            <div className={`text-2xl font-black tracking-tighter ${item.color}`}>
                                 {item.value}
                             </div>
                         </CardContent>
@@ -55,69 +55,64 @@ export function IncidentReport({ report }: IncidentReportProps) {
 
             {/* Executive Summary Details */}
             <div className="space-y-6">
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="w-1 h-6 bg-cyan-500 shadow-[0_0_10px_rgba(0,242,255,0.5)]" />
-                    <h3 className="text-xl font-bold tracking-tight text-white uppercase italic">Executive Summary</h3>
+                <div className="flex items-center gap-3 mb-4 border-b border-gray-200 pb-2">
+                    <div className="w-1 h-6 bg-[#19314B]" />
+                    <h3 className="text-xl font-black tracking-tight text-[#19314B] uppercase">Executive Summary</h3>
                 </div>
-                <Card className="bg-zinc-950/30 border-zinc-800/50">
+                <Card className="bg-white border-gray-200 rounded-none shadow-sm">
                     <CardContent className="pt-6 space-y-6">
-                        <div className="space-y-2">
-                            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Business Impact</p>
-                            <p className="text-[14px] text-zinc-300 leading-relaxed font-mono">
-                                {executiveSummary.businessImpact}
-                            </p>
+                        <p className="text-gray-700 leading-relaxed font-sans">{executiveSummary.businessImpact}</p>
+
+                        <div className="space-y-4">
+                            <h4 className="text-sm font-bold text-[#19314B] uppercase tracking-wider">Key Findings</h4>
+                            <ul className="space-y-2">
+                                {executiveSummary.keyFindings.map((finding, i) => (
+                                    <li key={i} className="flex items-start gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-none bg-[#D2B589] mt-2 shrink-0" />
+                                        <span className="text-gray-600 font-sans">{finding}</span>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-3">
-                                <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Key Findings</p>
-                                <ul className="space-y-2">
-                                    {executiveSummary.keyFindings?.map((finding, idx) => (
-                                        <li key={idx} className="text-[13px] text-zinc-400 flex items-start gap-2">
-                                            <AlertTriangle className="w-4 h-4 flex-shrink-0 text-yellow-500/70 mt-0.5" />
-                                            <span className="leading-snug">{finding}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                            <div className="space-y-3">
-                                <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Immediate Actions Required</p>
-                                <ul className="space-y-2">
-                                    {executiveSummary.immediateActions?.map((action, idx) => (
-                                        <li key={idx} className="text-[13px] text-zinc-400 flex items-start gap-2">
-                                            <ShieldCheck className="w-4 h-4 flex-shrink-0 text-cyan-500/70 mt-0.5" />
-                                            <span className="leading-snug">{action}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
+
+                        <div className="space-y-4 pt-4 border-t border-gray-100">
+                            <h4 className="text-sm font-bold text-[#0E6246] uppercase tracking-wider">Immediate Actions Required</h4>
+                            <ul className="space-y-2">
+                                {executiveSummary.immediateActions.map((action, i) => (
+                                    <li key={i} className="flex items-start gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-none bg-[#0E6246] mt-2 shrink-0" />
+                                        <span className="text-gray-600 font-sans">{action}</span>
+                                    </li>
+                                ))}
+                            </ul>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Incidents Drilldown */}
-            <div className="space-y-6">
-                <div className="flex items-center gap-3 mb-2">
-                    <div className="w-1 h-6 bg-cyan-500 shadow-[0_0_10px_rgba(0,242,255,0.5)]" />
-                    <h3 className="text-xl font-bold tracking-tight text-white uppercase italic">Impact Analysis Report</h3>
+            {/* Individual Incidents */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-3 mb-4 border-b border-gray-200 pb-2">
+                    <div className="w-1 h-6 bg-[#19314B]" />
+                    <h3 className="text-xl font-black tracking-tight text-[#19314B] uppercase">Impact Analysis Report</h3>
                 </div>
 
                 <div className="grid grid-cols-1 gap-6">
                     {incidents.map((inc, i) => (
-                        <Card key={i} className="bg-zinc-950/30 border-zinc-800/50 hover:border-cyan-500/20 transition-all duration-300 group">
-                            <CardHeader className="flex flex-row items-start justify-between pb-4 border-b border-zinc-900/50 bg-white/[0.01]">
+                        <Card key={i} className="bg-white border-gray-200 hover:border-[#19314B]/30 transition-all duration-300 group rounded-none shadow-sm">
+                            <CardHeader className="flex flex-row items-start justify-between pb-4 border-b border-gray-100 bg-gray-50/50">
                                 <div className="space-y-1.5">
-                                    <CardTitle className="text-lg font-bold text-zinc-200 group-hover:text-cyan-400 transition-colors">
+                                    <CardTitle className="text-lg font-bold text-[#19314B] group-hover:text-[#0E6246] transition-colors">
                                         {inc.incident}
                                     </CardTitle>
                                     {inc.incidentDate && (
-                                        <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
-                                            <Activity className="w-3 h-3 text-cyan-600" />
+                                        <p className="text-[10px] font-sans text-gray-500 uppercase font-bold tracking-widest flex items-center gap-1.5">
+                                            <Activity className="w-3 h-3 text-[#D2B589]" />
                                             Incident Recorded: {inc.incidentDate}
                                         </p>
                                     )}
                                 </div>
-                                <Badge className={`${getSeverityBadge(inc.severity)} font-mono uppercase tracking-tighter mt-1`}>
+                                <Badge className={`${getSeverityBadge(inc.severity)} font-sans font-bold uppercase tracking-widest mt-1 rounded-sm`}>
                                     {inc.severity}
                                 </Badge>
                             </CardHeader>
@@ -125,21 +120,21 @@ export function IncidentReport({ report }: IncidentReportProps) {
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                     <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Technical Impact</p>
-                                            <p className="text-[13px] text-zinc-400 leading-relaxed font-mono">
+                                            <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Technical Impact</p>
+                                            <p className="text-[13px] text-gray-700 leading-relaxed font-sans">
                                                 {inc.impactAnalysis}
                                             </p>
                                         </div>
                                         <div className="flex flex-wrap gap-2 mt-2">
                                             {inc.cve?.map(c => (
-                                                <Badge key={c} variant="secondary" className="bg-zinc-900 text-[10px] font-mono border-zinc-800">
+                                                <Badge key={c} variant="secondary" className="bg-gray-100 text-[#19314B] text-[10px] font-sans font-bold border-gray-200 rounded-sm">
                                                     {c}
                                                 </Badge>
                                             ))}
                                         </div>
                                         {inc.sourceLinks && inc.sourceLinks.length > 0 && (
                                             <div className="pt-2">
-                                                <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest mb-2 flex items-center gap-1">
+                                                <p className="text-[10px] text-[#0E6246] uppercase font-black tracking-widest mb-2 flex items-center gap-1">
                                                     <Search className="w-3 h-3" /> External Intelligence Sources
                                                 </p>
                                                 <div className="flex flex-wrap gap-2">
@@ -153,7 +148,7 @@ export function IncidentReport({ report }: IncidentReportProps) {
                                                                 href={href}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="text-[10px] text-cyan-400 hover:text-cyan-300 bg-cyan-950/20 border border-cyan-900/30 px-2.5 py-1 rounded flex items-center gap-1.5 transition-colors"
+                                                                className="text-[10px] text-[#19314B] hover:text-[#0E6246] bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-sm flex items-center gap-1.5 transition-colors font-bold"
                                                             >
                                                                 <ExternalLink className="w-3 h-3" />
                                                                 {display}
@@ -164,25 +159,22 @@ export function IncidentReport({ report }: IncidentReportProps) {
                                             </div>
                                         )}
                                     </div>
-
-                                    <div className="bg-cyan-500/[0.02] p-5 rounded-lg border border-zinc-800/40 shadow-inner">
-                                        <p className="text-[10px] font-bold text-cyan-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                            <ShieldCheck className="w-3.5 h-3.5" />
-                                            Priority Remediation Protocol
-                                        </p>
-                                        <ul className="space-y-3">
-                                            {inc.recommendedActions.map((action, j) => (
-                                                <li key={j} className="text-[12px] text-zinc-300 flex items-start gap-3">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-500/50 mt-1.5 flex-shrink-0" />
-                                                    <span className="leading-snug">{action}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
+                                    <div className="space-y-4 lg:border-l lg:border-gray-100 lg:pl-8">
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] text-[#D2B589] uppercase font-black tracking-widest">Recommended Actions</p>
+                                            <ul className="space-y-3">
+                                                {inc.recommendedActions?.map((action, idx) => (
+                                                    <li key={idx} className="flex items-start gap-3 bg-gray-50/50 p-2.5 rounded-sm border border-gray-100">
+                                                        <ShieldCheck className="w-4 h-4 text-[#0E6246] mt-0.5 shrink-0" />
+                                                        <span className="text-[13px] text-gray-700 font-sans">{action}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
                                     </div>
                                 </div>
                             </CardContent>
-                        </Card>
-                    ))}
+                        </Card>))}
                 </div>
             </div>
         </div>
