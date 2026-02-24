@@ -1,0 +1,11 @@
+INFO:     Started server process [60233]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:58262 - "GET /api/scan-report?sessionId=873f6a56-6902-4a49-afb3-df172ff73718 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58263 - "GET /api/thought-trace?sessionId=873f6a56-6902-4a49-afb3-df172ff73718 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58264 - "GET /api/sessions HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [60233]

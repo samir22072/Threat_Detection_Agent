@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "threat-detection-backend"
+version = "0.1.0"
+description = "Backend for Threat Detection Agent System"
+authors = ["Samir Hendre"]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.14"
+fastapi = "*"
+uvicorn = "*"
+pydantic = "*"
+psycopg2-binary = "*"
+crewai = {extras = ["azure-ai-inference"], version = "^1.9.3"}
+crewai-tools = "*"
+langchain-core = "*"
+langchain-openai = "*"
+python-dotenv = "*"
+sqlalchemy = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
