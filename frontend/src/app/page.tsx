@@ -41,6 +41,7 @@ export default function Home() {
 
   const [sessionId, setSessionId] = useState<string>('');
   const [sessionHistory, setSessionHistory] = useState<{ id: string, name: string, timestamp: string }[]>([]);
+  const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -54,6 +55,8 @@ export default function Home() {
       }
     } catch (e) {
       console.error("Failed to load sessions:", e);
+    } finally {
+      setIsHistoryLoaded(true);
     }
   };
 
@@ -319,20 +322,30 @@ export default function Home() {
               </span>
               <Shield className="w-8 h-8 md:w-10 md:h-10 text-[#0E6246]" />
             </h1>
-            <p className="text-[#a0a0a0] font-sans tracking-wide text-xs uppercase pl-1 flex items-center gap-4 mt-2">
+            <div className="text-gray-500 font-sans tracking-wide text-xs uppercase pl-1 flex items-center gap-4 mt-2">
               Autonomous Intelligence System
               {sessionId &&
-                <span className="flex items-center gap-2 text-[#D2B589] font-bold border border-[#D2B589]/20 bg-[#19314B]/80 px-2 py-1 rounded">
-                  <Activity className="w-3 h-3" />
-                  <span className="tracking-wide">
-                    {sessionHistory.find(s => s.id === sessionId)?.name?.toUpperCase() || `${asset.replace(/[^a-zA-Z0-9]/g, '')}_Analysis_${sessionId.split('-')[0]}`.toUpperCase()}
+                <div className="flex items-center gap-2 ml-2">
+                  <span className="flex items-center gap-2 font-bold border border-gray-200 bg-white shadow-sm px-3 py-1.5 rounded-none">
+                    <Activity className="w-3.5 h-3.5 text-[#D2B589]" />
+                    <span className="tracking-wide text-[#19314B]">
+                      {!isHistoryLoaded
+                        ? 'LOADING...'
+                        : (sessionHistory.find(s => s.id === sessionId)?.name?.toUpperCase() || `${asset.replace(/[^a-zA-Z0-9]/g, '')}_Analysis_${sessionId.split('-')[0]}`.toUpperCase())}
+                    </span>
                   </span>
-                  <Button variant="ghost" size="sm" onClick={startNewSession} className="h-5 px-2 ml-2 text-[10px] bg-[#0E6246] hover:bg-[#0E6246]/80 text-white rounded">
-                    <Plus className="w-3 h-3 mr-1" /> NEW
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={startNewSession}
+                    className="h-8 px-3 text-[10px] bg-white hover:bg-gray-50 border-gray-200 text-[#19314B] rounded-none shadow-sm transition-all font-bold tracking-widest"
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1 text-[#0E6246]" />
+                    NEW SESSION
                   </Button>
-                </span>
+                </div>
               }
-            </p>
+            </div>
           </div>
 
           <div className="flex flex-col md:flex-row items-center gap-4">
