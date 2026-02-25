@@ -8,7 +8,7 @@ from typing import List, Dict, Any
 
 # Import DB layer
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from db import get_agents_config as db_get_agents_config
+from dataaccesslayer import get_agents_config as db_get_agents_config
 
 # Load environment variables from .env file
 load_dotenv()

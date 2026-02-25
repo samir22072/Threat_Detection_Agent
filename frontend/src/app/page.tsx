@@ -595,7 +595,7 @@ export default function Home() {
             )}
 
             {status === 'finished' && report && (
-              <IncidentReport report={report} />
+              <IncidentReport report={report} sessionId={sessionId} />
             )}
           </div>
         </div>

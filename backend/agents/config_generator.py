@@ -6,7 +6,7 @@ from langchain_openai import AzureChatOpenAI
 # Import DB layer
 import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from db import update_agents_config
+from dataaccesslayer import update_agents_config
 
 PROMPT = """You are an expert Cyber Security Architect configuring a multi-agent system.
 We have three agents:

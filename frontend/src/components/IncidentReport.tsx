@@ -3,14 +3,57 @@
 import { ScanReport } from "@/types";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, ShieldCheck, Activity, Search, ExternalLink } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { AlertTriangle, ShieldCheck, Activity, Search, ExternalLink, Mail, Send, Check, Loader2 } from "lucide-react";
+import { useState } from "react";
 
 interface IncidentReportProps {
     report: ScanReport;
+    sessionId: string;
 }
 
-export function IncidentReport({ report }: IncidentReportProps) {
+export function IncidentReport({ report, sessionId }: IncidentReportProps) {
     const { summary, incidents, executiveSummary } = report;
+
+    const [isEmailOpen, setIsEmailOpen] = useState(false);
+    const [emailInput, setEmailInput] = useState("");
+    const [isSendingEmail, setIsSendingEmail] = useState(false);
+    const [emailSuccess, setEmailSuccess] = useState(false);
+
+    const handleSendEmail = async () => {
+        if (!emailInput.trim()) return;
+        setIsSendingEmail(true);
+        setEmailSuccess(false);
+
+        try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+            const emails = emailInput.split(',').map(e => e.trim()).filter(e => e);
+
+            const resp = await fetch(`${API_URL}/api/send-email`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId, emails })
+            });
+
+            if (!resp.ok) {
+                throw new Error("Failed to send email");
+            }
+
+            setEmailSuccess(true);
+            setTimeout(() => {
+                setIsEmailOpen(false);
+                setEmailSuccess(false);
+                setEmailInput("");
+            }, 3000);
+
+        } catch (e) {
+            console.error(e);
+            alert("Failed to send report via email. Ensure backend is running and configured.");
+        } finally {
+            setIsSendingEmail(false);
+        }
+    };
 
     const getRiskColor = (level: string) => {
         switch (level?.toLowerCase()) {
@@ -55,9 +98,49 @@ export function IncidentReport({ report }: IncidentReportProps) {
 
             {/* Executive Summary Details */}
             <div className="space-y-6">
-                <div className="flex items-center gap-3 mb-4 border-b border-gray-200 pb-2">
-                    <div className="w-1 h-6 bg-[#19314B]" />
-                    <h3 className="text-xl font-black tracking-tight text-[#19314B] uppercase">Executive Summary</h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 border-b border-gray-200 pb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-1 h-6 bg-[#19314B]" />
+                        <h3 className="text-xl font-black tracking-tight text-[#19314B] uppercase">Executive Summary</h3>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        {isEmailOpen ? (
+                            <div className="flex items-center gap-2 animate-in slide-in-from-right-2 duration-300">
+                                <Input
+                                    placeholder="Enter emails (comma separated)"
+                                    value={emailInput}
+                                    onChange={(e) => setEmailInput(e.target.value)}
+                                    className="h-8 max-w-xs text-xs font-sans rounded-none border-gray-300 focus:border-[#19314B]"
+                                    disabled={isSendingEmail || emailSuccess}
+                                />
+                                <Button
+                                    size="sm"
+                                    onClick={handleSendEmail}
+                                    disabled={isSendingEmail || emailSuccess || !emailInput.trim()}
+                                    className="h-8 px-4 rounded-none bg-[#19314B] hover:bg-[#19314B]/90 text-white font-bold tracking-widest text-xs uppercase"
+                                >
+                                    {isSendingEmail ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> :
+                                        emailSuccess ? <Check className="w-3.5 h-3.5 text-green-400" /> :
+                                            <Send className="w-3.5 h-3.5" />}
+                                </Button>
+                                {!isSendingEmail && !emailSuccess && (
+                                    <Button variant="ghost" size="sm" onClick={() => setIsEmailOpen(false)} className="h-8 px-2 text-gray-400 hover:text-gray-600 rounded-none">
+                                        Cancel
+                                    </Button>
+                                )}
+                            </div>
+                        ) : (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsEmailOpen(true)}
+                                className="h-8 border-gray-200 text-[#19314B] hover:bg-gray-50 font-bold tracking-widest uppercase text-xs rounded-none shadow-sm"
+                            >
+                                <Mail className="w-3.5 h-3.5 mr-2" /> Share via Email
+                            </Button>
+                        )}
+                    </div>
                 </div>
                 <Card className="bg-white border-gray-200 rounded-none shadow-sm">
                     <CardContent className="pt-6 space-y-6">

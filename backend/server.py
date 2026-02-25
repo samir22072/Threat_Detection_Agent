@@ -5,13 +5,13 @@ from datetime import datetime
 from typing import Dict, Any, List
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from utils import send_o365_email
+from schemas import ScanRequest, EmailRequest
 from agents.crew_analysis import run_crew
 from agents.config_generator import generate_agents_config
 
 # Import database layer
-from db import (
+from dataaccesslayer import (
     get_all_sessions,
     get_agents_config as db_get_agents_config,
     update_agents_config as db_update_agents_config,
@@ -68,12 +68,6 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-class ScanRequest(BaseModel):
-    asset: str
-    attributes: Dict[str, str] = {}
-    scanDate: str = datetime.now().strftime("%Y-%m-%d")
-    timeDuration: str = "last 60 days"
-    sessionId: str = "default"
 
 @app.websocket("/ws/scan/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
@@ -262,6 +256,22 @@ async def start_scan(request: ScanRequest, background_tasks: BackgroundTasks):
         
     except Exception as e:
         print(f"Error queuing scan: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/send-email")
+async def send_report_email(request: EmailRequest):
+    try:
+        report = db_get_scan_report(request.sessionId)
+        if not report:
+            raise HTTPException(status_code=404, detail="Scan report not found for this session.")
+
+        result = send_o365_email(report, request.emails)
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error handling send-email: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
