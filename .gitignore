@@ -1,5 +1,22 @@
-venv
+# Virtual Environments
+venv/
+env/
+
+# Environment Variables
 .env
-backend/__pycache__
-backend/agents/__pycache__
+backend/.env
+frontend/.env
+
+# Python Cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Backend specifics
 backend/server.log
+backend/crewai_logs/
+*.sqlite3
+
+# System Files
+.DS_Store
+.vscode/
