@@ -12,3 +12,7 @@ class ScanRequest(BaseModel):
 class EmailRequest(BaseModel):
     sessionId: str
     emails: List[str]
+
+class IgnoredSourceRequest(BaseModel):
+    url: str
+    incident_summary: str = ""

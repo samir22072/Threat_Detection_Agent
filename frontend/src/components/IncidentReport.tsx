@@ -5,8 +5,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertTriangle, ShieldCheck, Activity, Search, ExternalLink, Mail, Send, Check, Loader2 } from "lucide-react";
+import { AlertTriangle, ShieldCheck, Activity, Search, ExternalLink, Mail, Send, Check, Loader2, Archive } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 
 interface IncidentReportProps {
     report: ScanReport;
@@ -20,6 +21,42 @@ export function IncidentReport({ report, sessionId }: IncidentReportProps) {
     const [emailInput, setEmailInput] = useState("");
     const [isSendingEmail, setIsSendingEmail] = useState(false);
     const [emailSuccess, setEmailSuccess] = useState(false);
+    const [ignoredSources, setIgnoredSources] = useState<string[]>([]);
+    const [ignoringIncident, setIgnoringIncident] = useState<string | null>(null);
+
+    const handleIgnoreIncident = async (inc: any) => {
+        if (!inc.sourceLinks || inc.sourceLinks.length === 0) {
+            toast.error("Cannot mark addressed without source links.");
+            return;
+        }
+
+        setIgnoringIncident(inc.incident);
+        try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+            await Promise.all(inc.sourceLinks.map(async (link: string) => {
+                const resp = await fetch(`${API_URL}/api/ignored-sources`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: link, incident_summary: inc.impactAnalysis || inc.incident })
+                });
+
+                if (!resp.ok) {
+                    throw new Error("Failed to ignore source");
+                }
+                setIgnoredSources(prev => prev.includes(link) ? prev : [...prev, link]);
+            }));
+
+            toast.success("Incident Addressed", {
+                description: "This incident and its sources will be excluded in future scans.",
+            });
+        } catch (e) {
+            console.error(e);
+            toast.error("Failed to mark incident as addressed.");
+        } finally {
+            setIgnoringIncident(null);
+        }
+    };
 
     const handleSendEmail = async () => {
         if (!emailInput.trim()) return;
@@ -49,7 +86,9 @@ export function IncidentReport({ report, sessionId }: IncidentReportProps) {
 
         } catch (e) {
             console.error(e);
-            alert("Failed to send report via email. Ensure backend is running and configured.");
+            toast.error("Failed to send report via email", {
+                description: "Ensure the backend is running and configured.",
+            });
         } finally {
             setIsSendingEmail(false);
         }
@@ -195,9 +234,27 @@ export function IncidentReport({ report, sessionId }: IncidentReportProps) {
                                         </p>
                                     )}
                                 </div>
-                                <Badge className={`${getSeverityBadge(inc.severity)} font-sans font-bold uppercase tracking-widest mt-1 rounded-sm`}>
-                                    {inc.severity}
-                                </Badge>
+                                <div className="flex items-center gap-3">
+                                    <Badge className={`${getSeverityBadge(inc.severity)} font-sans font-bold uppercase tracking-widest mt-1 rounded-sm`}>
+                                        {inc.severity}
+                                    </Badge>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleIgnoreIncident(inc)}
+                                        disabled={ignoringIncident === inc.incident || (inc.sourceLinks && inc.sourceLinks.every((link: string) => ignoredSources.includes(link)))}
+                                        className="h-7 text-[10px] font-bold tracking-widest uppercase rounded-sm border-gray-200 text-gray-500 hover:text-[#0E6246] hover:bg-gray-50 transition-colors"
+                                    >
+                                        {ignoringIncident === inc.incident ? (
+                                            <Loader2 className="w-3 h-3 animate-spin mr-1.5" />
+                                        ) : inc.sourceLinks && inc.sourceLinks.every((link: string) => ignoredSources.includes(link)) ? (
+                                            <Check className="w-3 h-3 text-[#0E6246] mr-1.5" />
+                                        ) : (
+                                            <Archive className="w-3 h-3 mr-1.5" />
+                                        )}
+                                        {inc.sourceLinks && inc.sourceLinks.every((link: string) => ignoredSources.includes(link)) ? "Addressed" : "Mark Addressed"}
+                                    </Button>
+                                </div>
                             </CardHeader>
                             <CardContent className="pt-6 space-y-6">
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -225,13 +282,15 @@ export function IncidentReport({ report, sessionId }: IncidentReportProps) {
                                                         const isUrl = link.startsWith('http://') || link.startsWith('https://');
                                                         const href = isUrl ? link : `https://${link}`;
                                                         const display = link.replace(/^https?:\/\//, '').substring(0, 40) + (link.length > 40 ? '...' : '');
+                                                        const isIgnored = ignoredSources.includes(link);
+
                                                         return (
                                                             <a
                                                                 key={idx}
                                                                 href={href}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="text-[10px] text-[#19314B] hover:text-[#0E6246] bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-sm flex items-center gap-1.5 transition-colors font-bold"
+                                                                className={`text-[10px] bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-sm flex items-center gap-1.5 transition-colors font-bold ${isIgnored ? "text-gray-400 line-through" : "text-[#19314B] hover:text-[#0E6246]"}`}
                                                             >
                                                                 <ExternalLink className="w-3 h-3" />
                                                                 {display}

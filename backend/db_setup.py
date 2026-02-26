@@ -37,6 +37,27 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_thought_traces_session_id 
             ON thought_traces(session_id)
         """)
+
+        # Ignored Sources table
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS ignored_sources (
+                id SERIAL PRIMARY KEY,
+                url TEXT UNIQUE NOT NULL,
+                added_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                incident_summary TEXT
+            )
+        """)
+        
+        # Add incident_summary column if it doesn't exist (migration for existing table)
+        try:
+            cur.execute("""
+                ALTER TABLE ignored_sources
+                ADD COLUMN incident_summary TEXT;
+            """)
+        except Exception as e:
+            # Column likely already exists
+            conn.rollback() # Rollback the failed ALTER TABLE transaction
+            cur = conn.cursor() # Get a new cursor for the commit
         
         conn.commit()
         cur.close()

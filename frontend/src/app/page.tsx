@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Shield, Radio, Power, Box, Cpu, Workflow, Activity, User, Target, BookOpen, Plus, X } from 'lucide-react';
 import { AgentThought, ScanReport } from '@/types';
-
+import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // Type for the dynamic agent config
 type AgentConfigItem = {
   role: string;
@@ -188,11 +189,15 @@ export default function Home() {
       const data = await resp.json();
       setAgentsConfig(data.config);
       setIsEditingConfig(true);
-      alert("Agents configured successfully! You can now review and tweak them.");
+      toast.success("Agents configured successfully!", {
+        description: "You can now review and tweak them.",
+      });
       loadSessions();
     } catch (err) {
       console.error(err);
-      alert("Failed to generate agents. Ensure backend is running.");
+      toast.error("Failed to generate agents", {
+        description: "Ensure the backend is running.",
+      });
     } finally {
       setIsGeneratingAgents(false);
     }
@@ -207,11 +212,11 @@ export default function Home() {
         body: JSON.stringify(agentsConfig)
       });
       if (!resp.ok) throw new Error("Failed to save config");
-      alert("Configuration saved successfully!");
+      toast.success("Configuration saved successfully!");
       setIsEditingConfig(false);
     } catch (e) {
       console.error(e);
-      alert("Error saving configuration.");
+      toast.error("Error saving configuration.");
     }
   };
 
@@ -223,7 +228,9 @@ export default function Home() {
       const config = await resp.json();
 
       if (Object.keys(config).length === 0) {
-        alert("No configuration found. Please generate agents first.");
+        toast.warning("No configuration found", {
+          description: "Please generate agents first.",
+        });
         return;
       }
 
@@ -231,7 +238,9 @@ export default function Home() {
       setIsEditingConfig(true);
     } catch (e) {
       console.error(e);
-      alert("Failed to load configuration. Is the backend running?");
+      toast.error("Failed to load configuration.", {
+        description: "Is the backend running?",
+      });
     }
   };
 
@@ -260,7 +269,9 @@ export default function Home() {
             setStatus('finished');
           } else {
             setStatus('idle');
-            alert("Scan completed but failed to fetch the final report.");
+            toast.warning("Scan completed", {
+              description: "But failed to fetch the final report.",
+            });
           }
           ws.close();
         }
@@ -272,7 +283,9 @@ export default function Home() {
     ws.onerror = (e) => {
       console.error("WS Connection Error:", e);
       setStatus('idle');
-      alert("WebSocket connection error. The scan might still be running.");
+      toast.error("WebSocket connection error", {
+        description: "The scan might still be running.",
+      });
     };
 
     try {
@@ -297,7 +310,9 @@ export default function Home() {
     } catch (err) {
       console.error(err);
       setStatus('idle');
-      alert("Failed to initialize scan. Ensure backend is running.");
+      toast.error("Failed to initialize scan", {
+        description: "Ensure the backend is running.",
+      });
       ws.close();
     }
   };
@@ -350,16 +365,18 @@ export default function Home() {
 
           <div className="flex flex-col md:flex-row items-center gap-4">
             {sessionHistory.length > 0 && (
-              <select
-                value={sessionId}
-                onChange={(e) => switchSession(e.target.value)}
-                className="bg-white border border-[#19314B]/30 text-[#19314B] font-sans font-bold text-xs p-2 rounded outline-none w-48 shadow-sm"
-              >
-                <option value={sessionId} disabled>-- Select Session History --</option>
-                {sessionHistory.map(s => (
-                  <option key={s.id} value={s.id}>{s.name} ({new Date(s.timestamp).toLocaleTimeString()})</option>
-                ))}
-              </select>
+              <Select value={sessionId} onValueChange={switchSession}>
+                <SelectTrigger className="bg-white border border-gray-200 hover:border-[#D2B589] text-[#19314B] font-sans font-bold text-xs px-3 py-2 rounded-none outline-none w-64 shadow-sm transition-all h-9 cursor-pointer">
+                  <SelectValue placeholder="-- Select Session History --" />
+                </SelectTrigger>
+                <SelectContent className="bg-white/90 backdrop-blur-xl border-gray-200 rounded-none shadow-xl pointer-events-auto">
+                  {sessionHistory.map(s => (
+                    <SelectItem key={s.id} value={s.id} className="font-sans font-bold text-xs text-[#19314B] focus:bg-gray-50 focus:text-[#19314B] cursor-pointer rounded-none">
+                      {s.name} <span className="text-gray-400 font-normal ml-2">({new Date(s.timestamp).toLocaleTimeString()})</span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
 
             <div className="flex items-center gap-6 bg-white p-2 px-6 rounded border border-gray-200 shadow-md">

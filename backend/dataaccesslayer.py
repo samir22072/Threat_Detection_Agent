@@ -175,3 +175,33 @@ def get_thought_traces(session_id: str):
             row['timestamp'] = row['timestamp'].isoformat()
             
     return rows
+
+# --- Ignored Sources Operations ---
+
+def add_ignored_source(url: str, summary: str = ""):
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    cur.execute("""
+        INSERT INTO ignored_sources (url, incident_summary) 
+        VALUES (%s, %s)
+        ON CONFLICT (url) DO UPDATE 
+        SET incident_summary = EXCLUDED.incident_summary
+    """, (url, summary))
+    
+    conn.commit()
+    cur.close()
+    conn.close()
+
+def get_ignored_sources():
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cur.execute("SELECT url, incident_summary FROM ignored_sources")
+    rows = cur.fetchall()
+    
+    cur.close()
+    conn.close()
+    
+    return [{"url": row['url'], "summary": row['incident_summary']} for row in rows]
+

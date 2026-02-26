@@ -6,7 +6,7 @@ from typing import Dict, Any, List
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from utils import send_o365_email
-from schemas import ScanRequest, EmailRequest
+from schemas import ScanRequest, EmailRequest, IgnoredSourceRequest
 from agents.crew_analysis import run_crew
 from agents.config_generator import generate_agents_config
 
@@ -19,7 +19,9 @@ from dataaccesslayer import (
     update_scan_report as db_update_scan_report,
     insert_thought_trace,
     get_thought_traces as db_get_thought_traces,
-    ensure_session_exists
+    ensure_session_exists,
+    add_ignored_source,
+    get_ignored_sources
 )
 
 # Initialize database tables
@@ -209,12 +211,14 @@ async def run_scan_background(request: ScanRequest):
             asyncio.run_coroutine_threadsafe(manager.broadcast_to_session(request.sessionId, msg), loop)
 
         # Run CrewAI in a separate thread to avoid blocking the FastAPI event loop
+        time_duration = asset_config.get("Time Duration", "last 60 days")
+        
         result = await asyncio.to_thread(
             run_crew,
             request.asset,
             asset_config,
             request.scanDate,
-            request.timeDuration,
+            time_duration,
             request.sessionId,
             step_callback=step_callback
         )
@@ -272,6 +276,24 @@ async def send_report_email(request: EmailRequest):
         raise
     except Exception as e:
         print(f"Error handling send-email: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/ignored-sources")
+async def fetch_ignored_sources():
+    try:
+        urls = get_ignored_sources()
+        return {"urls": urls}
+    except Exception as e:
+        print(f"Error fetching ignored sources: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/ignored-sources")
+async def save_ignored_source(request: IgnoredSourceRequest):
+    try:
+        add_ignored_source(request.url, request.incident_summary)
+        return {"status": "success"}
+    except Exception as e:
+        print(f"Error saving ignored source: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
