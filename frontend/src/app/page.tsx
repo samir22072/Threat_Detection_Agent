@@ -32,6 +32,7 @@ export default function Home() {
     { key: 'Firmware Version', value: 'SonicOS 7.0.1-5050' },
     { key: 'Exposed Services', value: 'SSL VPN, HTTPS Management' }
   ]);
+  const [timeDuration, setTimeDuration] = useState('Past Month');
 
   const [status, setStatus] = useState<'idle' | 'running' | 'finished'>('idle');
   const [isGeneratingAgents, setIsGeneratingAgents] = useState(false);
@@ -174,12 +175,15 @@ export default function Home() {
     setIsGeneratingAgents(true);
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const payloadAttributes = Object.fromEntries(attributes.filter(a => a.key && a.value).map(a => [a.key, a.value]));
+      payloadAttributes['Time Duration'] = timeDuration;
+
       const resp = await fetch(`${API_URL}/api/generate-agents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           asset,
-          attributes: Object.fromEntries(attributes.filter(a => a.key && a.value).map(a => [a.key, a.value])),
+          attributes: payloadAttributes,
           sessionId
         })
       });
@@ -290,12 +294,15 @@ export default function Home() {
 
     try {
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const payloadAttributes = Object.fromEntries(attributes.filter(a => a.key && a.value).map(a => [a.key, a.value]));
+      payloadAttributes['Time Duration'] = timeDuration;
+
       const resp = await fetch(`${API_URL}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           asset,
-          attributes: Object.fromEntries(attributes.filter(a => a.key && a.value).map(a => [a.key, a.value])),
+          attributes: payloadAttributes,
           sessionId
         })
       });
@@ -369,7 +376,7 @@ export default function Home() {
                 <SelectTrigger className="bg-white border border-gray-200 hover:border-[#D2B589] text-[#19314B] font-sans font-bold text-xs px-3 py-2 rounded-none outline-none w-64 shadow-sm transition-all h-9 cursor-pointer">
                   <SelectValue placeholder="-- Select Session History --" />
                 </SelectTrigger>
-                <SelectContent className="bg-white/90 backdrop-blur-xl border-gray-200 rounded-none shadow-xl pointer-events-auto">
+                <SelectContent className="bg-white/90 backdrop-blur-xl border-gray-200 rounded-none shadow-xl pointer-events-auto max-h-30 overflow-y-auto w-64">
                   {sessionHistory.map(s => (
                     <SelectItem key={s.id} value={s.id} className="font-sans font-bold text-xs text-[#19314B] focus:bg-gray-50 focus:text-[#19314B] cursor-pointer rounded-none">
                       {s.name} <span className="text-gray-400 font-normal ml-2">({new Date(s.timestamp).toLocaleTimeString()})</span>
@@ -414,6 +421,23 @@ export default function Home() {
                     onChange={(e) => setAsset(e.target.value)}
                     className="bg-gray-50 border-gray-200 focus:border-[#19314B] text-[#19314B] font-sans font-bold text-sm h-12 transition-all rounded-none"
                   />
+                </div>
+
+                <div className="space-y-1.5 mb-4 mt-2">
+                  <label className="text-[10px] uppercase font-bold text-gray-500 tracking-widest flex items-center gap-2 ml-1">
+                    <Activity className="w-3 h-3 text-[#19314B]" /> Search Time Boundary
+                  </label>
+                  <Select value={timeDuration} onValueChange={setTimeDuration}>
+                    <SelectTrigger className="bg-gray-50 border-gray-200 focus:border-[#19314B] text-[#19314B] font-sans font-bold text-sm h-12 rounded-none outline-none shadow-sm transition-all cursor-pointer">
+                      <SelectValue placeholder="Select Time Duration" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-gray-200 rounded-none shadow-xl">
+                      <SelectItem value="Past 24 Hours">Past 24 Hours</SelectItem>
+                      <SelectItem value="Past Week">Past Week</SelectItem>
+                      <SelectItem value="Past Month">Past Month</SelectItem>
+                      <SelectItem value="Past Year">Past Year</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-3">

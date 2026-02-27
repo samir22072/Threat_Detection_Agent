@@ -10,7 +10,7 @@ from dataaccesslayer import update_agents_config
 
 PROMPT = """You are an expert Cyber Security Architect configuring a multi-agent system.
 We have three agents:
-1. researcher: Finds recent security incidents and CVEs. Needs tools: ['SerperDevTool', 'ScrapeWebsiteTool']
+1. researcher: Finds recent security incidents and CVEs. Needs tools: ['DateSortedSearchTool', 'ScrapeWebsiteTool']
 2. analyst: Evaluates incidents against the config. Needs tools: []
 3. summarizer: Generates final JSON report. Needs tools: []
 
@@ -28,7 +28,7 @@ You MUST output ONLY valid JSON matching this exact structure:
     "role": "...",
     "goal": "...",
     "backstory": "...",
-    "tools": ["SerperDevTool", "ScrapeWebsiteTool"],
+    "tools": ["DateSortedSearchTool", "ScrapeWebsiteTool"],
     "llm": "azure_openai",
     "verbose": true,
     "allow_delegation": false

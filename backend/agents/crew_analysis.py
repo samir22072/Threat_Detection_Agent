@@ -33,20 +33,40 @@ def get_llm():
         temperature=0.2
     )
 
-# Real-World Search and Scraping Tools
-search_tool = SerperDevTool()
-scrape_tool = ScrapeWebsiteTool()
+from agents.tools import DateSortedSearchTool, NewsSearchTool
 
-# Tool Mapping
-AVAILABLE_TOOLS = {
-    "SerperDevTool": search_tool,
-    "ScrapeWebsiteTool": scrape_tool
-}
+# Global scrape tool (doesn't need dynamic time boundaries)
+scrape_tool = ScrapeWebsiteTool()
 
 llm = get_llm()
 
 # Orchestration
 def run_crew(asset: str, asset_config: Dict[str, Any], scan_date: str, time_duration: str, session_id: str = "default", step_callback=None) -> str:
+    
+    # 1. Parse UI Time Duration into Google Search Time Boundary
+    time_bound = ""
+    td_lower = time_duration.lower()
+    if "24 hours" in td_lower or "24 hr" in td_lower or "day" in td_lower:
+        time_bound = "d"
+    elif "week" in td_lower or "7 days" in td_lower:
+        time_bound = "w"
+    elif "month" in td_lower or "30 days" in td_lower or "60 days" in td_lower:
+        time_bound = "m"
+    elif "year" in td_lower:
+        time_bound = "y"
+        
+    print(f"[CrewAI] Parsed mapped time boundary '{time_bound}' for duration string: {time_duration}")
+        
+    # 2. Instantiate Search Tools locally per-run to strictly enforce time bound
+    search_tool = DateSortedSearchTool(time_bound=time_bound)
+    news_tool = NewsSearchTool(time_bound=time_bound)
+    
+    available_tools = {
+        "DateSortedSearchTool": search_tool,
+        "NewsSearchTool": news_tool,
+        "ScrapeWebsiteTool": scrape_tool
+    }
+    
     # Load Agent Configurations at runtime from DB
     try:
         agents_config = db_get_agents_config(session_id)
@@ -81,7 +101,7 @@ def run_crew(asset: str, asset_config: Dict[str, Any], scan_date: str, time_dura
             raise ValueError(f"Configuration for agent '{agent_name}' not found.")
         
         # Map tools
-        agent_tools = [AVAILABLE_TOOLS[t] for t in config.get("tools", []) if t in AVAILABLE_TOOLS]
+        agent_tools = [available_tools[t] for t in config.get("tools", []) if t in available_tools]
         
         # Map LLM
         agent_llm = llm if config.get("llm") == "azure_openai" else None
