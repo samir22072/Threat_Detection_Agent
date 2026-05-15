@@ -14,6 +14,14 @@ from dataaccesslayer import get_agents_config as db_get_agents_config, get_ignor
 load_dotenv()
 
 from crewai_tools import SerperDevTool, ScrapeWebsiteTool
+from agents.prompts import (
+    DISCOVERY_TASK_PROMPT,
+    DISCOVERY_EXPECTED_OUTPUT,
+    ANALYSIS_TASK_PROMPT,
+    ANALYSIS_EXPECTED_OUTPUT,
+    REPORT_TASK_PROMPT,
+    REPORT_EXPECTED_OUTPUT
+)
 
 # Configure Azure OpenAI LLM
 def get_llm():
@@ -136,54 +144,21 @@ def run_crew(asset: str, asset_config: Dict[str, Any], scan_date: str, time_dura
 
     # Define Tasks
     discovery_task = Task(
-        description=f'''Find and research relevant security incidents for {{asset}} in the {{timeDuration}}. 
-        
-        CRITICAL INSTRUCTIONS:
-        1. QUERY EXPANSION: You MUST run multiple, distinct searches to thoroughly cover the {{timeDuration}}. Do not rely on a single search query returning everything. Use variations (e.g., "[asset] CVE [year]", "[asset] vulnerability advisory", "[asset] exploit").
-        
-        2. DIVERSE SOURCES: You MUST actively search across multiple different types of sources to prevent blind spots, including but not limited to:
-           - Vendor Security Advisories (e.g., official PSIRT pages)
-           - Vulnerability Databases (e.g., NVD, MITRE CVE)
-           - Exploit Databases and PoC Repositories (e.g., Exploit-DB, GitHub, Packet Storm)
-           - Security News and Blogs (e.g., BleepingComputer, The Hacker News, technical deep-dives)
-           - Threat Intel Forums & Social Media (e.g., Reddit r/cybersecurity, Twitter/X InfoSec communities)
-        
-        3. SOURCE VALIDATION AND FALLBACKS: If you find a link, you MUST verify it is a valid, functioning HTTP/HTTPS URL that actually contains the threat intelligence. Do not hallucinate dummy URLs.
-           - If a website blocks your ScrapeWebsiteTool or returns an error (e.g., Cloudflare protection, 403 Forbidden), DO NOT GIVE UP on that incident.
-           - Instead, immediately run a new search query specifically looking for OTHER security blogs, news sites, or CVE databases that summarize what the blocked site said.
-           
-        4. DETAIL EXTRACTION: For every incident, you MUST extract:
-           - The exact Date of discovery or publication (YYYY-MM-DD format)
-           - CVE IDs if applicable
-           - Affected specific firmware or software versions (e.g., SonicOS 7.0)
-           - The specific exploit condition or technical root cause
-           - Direct remediation steps (e.g., specific CLI commands or patch links)
-           
-        5. TIME DURATION STRICTNESS: You MUST ONLY report incidents that were published or discovered strictly within the specified {{timeDuration}}. If an incident's date falls outside this time window, you MUST completely ignore and discard it.
-        {ignored_sources_instruction}''',
-        expected_output='A deep technical report resulting from multiple exhaustive searches, including validated source URLs, scraped data, and affected versions. Ensure ignored sources and duplicate addressed incidents based on summary are completely excluded.',
+        description=DISCOVERY_TASK_PROMPT.format(ignored_sources_instruction=ignored_sources_instruction),
+        expected_output=DISCOVERY_EXPECTED_OUTPUT,
         agent=researcher
     )
 
     analysis_task = Task(
-        description='''Analyze each incident found by the Researcher against the following configuration: {assetConfig}. Determine "doesAffectOrg" (True/False) based on firmware and exposed services. YOU MUST INCLUDE ALL VALIDATED SOURCE URLs and the exact INCIDENT DATE (publication date) in your analysis output for each incident.''',
-        expected_output='An impact analysis report strictly containing ONLY incidents that genuinely affect the configuration with solid evidence. Provide technical justification, business risk, the exact incident date, and the corresponding validated source URLs.',
+        description=ANALYSIS_TASK_PROMPT,
+        expected_output=ANALYSIS_EXPECTED_OUTPUT,
         agent=analyst,
         context=[discovery_task]
     )
 
     report_task = Task(
-        description='''Generate a final report in STRICT JSON format. 
-        The output MUST exactly follow this schema:
-        {
-            "summary": { "scanDate": "...", "timeWindow": "...", "totalIncidents": ..., "criticalCount": ..., "highCount": ..., "mediumCount": ..., "lowCount": ... },
-            "incidents": [ { "asset": "...", "incident": "...", "incidentDate": "...", "source": "...", "sourceLinks": ["<URL1>", "<URL2>"], "severity": "...", "cve": [...], "doesAffectOrg": true, "impactAnalysis": "...", "recommendedActions": [...] } ],
-            "executiveSummary": { "overallRiskLevel": "...", "keyFindings": [...], "businessImpact": "...", "immediateActions": [...] },
-            "references": { ... }
-        }
-        
-        Provide only the JSON. ''',
-        expected_output='A valid JSON object following the specified schema containing ONLY incidents that strictly affect the organization and fall within the time window.',
+        description=REPORT_TASK_PROMPT,
+        expected_output=REPORT_EXPECTED_OUTPUT,
         agent=summarizer,
         context=[analysis_task]
     )

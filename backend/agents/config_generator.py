@@ -8,35 +8,8 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dataaccesslayer import update_agents_config
 
-PROMPT = """You are an expert Cyber Security Architect configuring a multi-agent system.
-We have three agents:
-1. researcher: Finds recent security incidents and CVEs. Needs tools: ['DateSortedSearchTool', 'ScrapeWebsiteTool']
-2. analyst: Evaluates incidents against the config. Needs tools: []
-3. summarizer: Generates final JSON report. Needs tools: []
+from agents.prompts import CONFIG_GENERATOR_PROMPT
 
-Based on the TARGET ASSET configuration below, generate a highly specialized ROLE, GOAL, and BACKSTORY for each agent to maximize their effectiveness for this specific technology stack.
-All agents must use the 'azure_openai' LLM.
-'verbose' should be true.
-'allow_delegation' should be false.
-
-TARGET ASSET:
-{asset_config}
-
-You MUST output ONLY valid JSON matching this exact structure:
-{{
-  "researcher": {{
-    "role": "...",
-    "goal": "...",
-    "backstory": "...",
-    "tools": ["DateSortedSearchTool", "ScrapeWebsiteTool"],
-    "llm": "azure_openai",
-    "verbose": true,
-    "allow_delegation": false
-  }},
-  "analyst": {{ ... }},
-  "summarizer": {{ ... }}
-}}
-"""
 
 def get_langchain_llm():
     api_key = os.environ.get("AZURE_OPENAI_API_KEY")
@@ -56,7 +29,7 @@ def get_langchain_llm():
 
 def generate_agents_config(asset_config_str: str, session_id: str = "default") -> None:
     llm = get_langchain_llm()
-    prompt = PromptTemplate.from_template(PROMPT)
+    prompt = PromptTemplate.from_template(CONFIG_GENERATOR_PROMPT)
     chain = prompt | llm
     
     response = chain.invoke({"asset_config": asset_config_str})
