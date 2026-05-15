@@ -105,5 +105,4 @@ The easiest way to run the entire stack is using Docker Compose.
 3. **CrewAI Orchestrator**: Manages the lifecycle of the threat intelligence agents. Agents use custom tools to search the web, scrape content, and synthesize findings into a structured report.
 4. **Database (PostgreSQL)**: Stores session histories, scan reports, agent configurations, thought traces, and user-defined ignored sources.
 
-## 📝 License
-[Specify License Here]
+
